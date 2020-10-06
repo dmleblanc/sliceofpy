@@ -1,0 +1,103 @@
+from selenium import webdriver
+import time
+import pandas as pd
+from datetime import datetime
+import matplotlib.pyplot as plt
+
+# Get Current Date/Time
+now = datetime.now()
+year = now.strftime("%Y")
+month = now.strftime("%m")
+day = now.strftime("%d")
+time_now = now.strftime("%H:%M:%S")
+date_now = now.strftime("%m/%d/%Y")
+
+
+url = 'URL OF MARKETWATCH GAME'
+myportfolio ='URL OF MY PORTFOLIO'
+un = 'MARKETWATCH LOGIN EMAIL'
+pw = 'MARKETWATCH PASSWORD'
+
+cpath = r"PATH TO WEBDRIVER"
+driver = webdriver.Chrome(cpath)
+driver.get(url)
+time.sleep(1)
+
+def fillinfo(un,pw):
+    driver.find_element_by_id("username").send_keys(un)
+    driver.find_element_by_id("password").send_keys(pw)
+    driver.find_element_by_class_name('basic-login-submit').click()
+    time.sleep(3)
+
+df_data = []
+
+def get_portfolio():
+    driver.get(myportfolio)
+    now = datetime.now()
+    year = now.strftime("%Y")
+    month = now.strftime("%m")
+    day = now.strftime("%d")
+    time_now = now.strftime("%H:%M:%S")
+    date_now = now.strftime("%m/%d/%Y")
+    time.sleep(2)
+    symbols = driver.find_elements_by_class_name('symbol')
+    primary_t = driver.find_elements_by_class_name('primary')
+    secondary_t = driver.find_elements_by_class_name('secondary')
+    l_symbols = []
+    l_primary = []
+    l_secondary = []
+
+# Get Symbols
+
+    for i in symbols:
+       i = i.text
+       if not len(str(i)) == 0:
+           l_symbols.append(i)
+    n = len(l_symbols) + 1      # Number of Symbols
+    r = n * 5    
+    s = n * 4               # Number of list values to keep
+# Get Secondary
+
+# Get Primary
+    for i in primary_t:
+        i = i.text
+        if not len(str(i)) == 0 :
+            l_primary.append(i)
+    rows,rows1 = 5,10
+    temp = []
+    l_primary = l_primary[:r]
+    while rows < r:
+        temp.append((l_primary[rows:rows1]))
+        rows += 5
+        rows1 += 5
+    df_data = temp
+    date_col = [date_now]*(n-1)
+    time_col = [time_now]*(n-1)
+    df = pd.DataFrame(df_data, columns=l_primary[0:5])
+    df['Date'] = date_col
+    df['Time'] = time_col
+    return(df)
+    
+df2,df_target = pd.DataFrame(), pd.DataFrame()
+#fillinfo(un,pw)
+#get_portfolio()
+def monitor(DataFrame,DataFrame_Target):
+    fillinfo(un,pw)
+    driver.get(myportfolio)
+    i = 0
+    while i <= 10000:
+        driver.refresh()
+        DataFrame = DataFrame.append(get_portfolio(), ignore_index = True)
+        DataFrame_Target = DataFrame[DataFrame['SYMBOL'] == 'AMZN']
+        DataFrame_Target['PRICE'] = DataFrame_Target['PRICE'].str.replace('$','')
+        DataFrame_Target['PRICE'] = DataFrame_Target['PRICE'].str.replace(',','')
+        DataFrame_Target['PRICE'] = DataFrame_Target['PRICE'].astype(float)
+        DataFrame_Target['Time'] = DataFrame_Target['Time'].str.replace(':','')
+        DataFrame_Target['Time'] = DataFrame_Target['Time'].astype(int)
+        print(DataFrame_Target)
+        ax = plt.gca()
+        DataFrame_Target.plot(kind='line',x = 'Time', y = 'PRICE', ax = ax)
+        plt.show()
+        time.sleep(1)
+        i +=1
+monitor(df2,df_target)
